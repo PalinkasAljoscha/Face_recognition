@@ -12,6 +12,8 @@ import threading
 from audio_interactions import greet_and_ask_name, speak_message
 import logging
 
+from config import ip_webcam_phone_url
+
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 
@@ -102,11 +104,8 @@ def face_recognition_loop():
     sift = cv2.SIFT_create()
     bf = cv2.BFMatcher()
 
-    # to use cam from my old phone via 
-    ip_webcam_phone_url = "http://192.168.1.85:8080/video"
-
     # Start video capture
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(ip_webcam_phone_url)
 
     previous_faces = []
     distance_threshold = 50
