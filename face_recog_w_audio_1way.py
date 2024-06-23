@@ -9,7 +9,7 @@ import pygame
 from scipy.spatial import distance
 from collections import deque, Counter
 import threading
-from audio_interactions import greet_and_ask_name, speak_message
+from audio_interactions import speak_message
 import logging
 
 from config import ip_webcam_phone_url
@@ -23,7 +23,6 @@ lock = threading.Lock()
 # Global variables
 frame_labels = deque(maxlen=100)
 label_name_map_path = "label_name_map.json"
-audio_interaction_live = False
 
 def extract_sift_features(image):
     """Extract SIFT features from an image."""
@@ -69,26 +68,6 @@ def get_most_frequent_label(frame_labels):
     most_common_label, _ = counter.most_common(1)[0]
     return most_common_label
 
-# TODO: find other stt services that perform better
-# TODO: make sure that None / Null will not be turned into a name and put into label_name_map
-def ask_for_name_and_assign_to_label():
-    """Ask for the user's name and assign it to the detected face."""
-    global frame_labels, label_name_map, audio_interaction_live
-    with lock:
-        audio_interaction_live = True
-    received_name, t0, t1 = greet_and_ask_name()
-    with lock:
-        assign_label = get_most_frequent_label(frame_labels)
-        if assign_label:
-            label_name_map[assign_label] = received_name
-        audio_interaction_live = False
-
-def save_label_name_map():
-    """Save the label-name map to a file."""
-    with lock:
-        with open(label_name_map_path, 'w') as f:
-            json.dump(label_name_map, f)
-
 def face_recognition_loop():
     """Main face recognition loop."""
     global frame_labels, label_name_map, audio_interaction_live
@@ -106,7 +85,7 @@ def face_recognition_loop():
     bf = cv2.BFMatcher()
 
     # Start video capture
-    cap = cv2.VideoCapture(ip_webcam_phone_url)
+    cap = cv2.VideoCapture(0) # ip_webcam_phone_url
 
     previous_faces = []
     distance_threshold = 50
@@ -165,7 +144,6 @@ def face_recognition_loop():
 
         cv2.imshow('Face Recognition', frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
-            save_label_name_map()
             break
 
     cap.release()
@@ -212,11 +190,10 @@ def handle_recognized_face(label, recognized_faces):
     if label is not None and label not in recognized_faces:
         if label in label_name_map:
             msg = f"hello {label_name_map[label]}, nice to see you"
-            say_hello_thread = threading.Thread(target=speak_message, args=(msg,))
-            say_hello_thread.start()
-        elif not audio_interaction_live:
-            ask_for_name_thread = threading.Thread(target=ask_for_name_and_assign_to_label)
-            ask_for_name_thread.start()
+        else:
+            msg = f"hello , have we met before?"
+        say_hello_thread = threading.Thread(target=speak_message, args=(msg,))
+        say_hello_thread.start()
         recognized_faces.add(label)
 
 def main():
